@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pifagor Trade | On-Chain Analytics</title>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Montserrat:wght@400;700;900&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg: #050505;
+            --neon: #00FF41;
+            --text-main: #FFFFFF;
+            --text-muted: #A0A0A0;
+            --target-red: #FF4B4B;
+            --panel-bg: rgba(20, 20, 20, 0.8);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            background-image: radial-gradient(circle at 15% 50%, rgba(0, 255, 65, 0.04) 0%, transparent 50%),
+                              radial-gradient(circle at 85% 30%, rgba(255, 255, 255, 0.02) 0%, transparent 50%);
+        }
+
+        .slide {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            padding: 3% 5%;
+            box-sizing: border-box;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            pointer-events: none;
+            overflow-y: auto;
+        }
+
+        .slide.active {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+            z-index: 10;
+        }
+
+        .slide::-webkit-scrollbar { width: 6px; }
+        .slide::-webkit-scrollbar-track { background: transparent; }
+        .slide::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        .slide::-webkit-scrollbar-thumb:hover { background: var(--neon); }
+
+        .logo-top {
+            position: absolute;
+            top: 30px;
+            left: 40px;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 900;
+            font-size: 1.2rem;
+            color: transparent;
+            -webkit-text-stroke: 1px var(--neon);
+            letter-spacing: 2px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 50;
+        }
+
+        .logo-top span {
+            font-family: 'Caveat', cursive;
+            font-size: 1.8rem;
+            color: var(--text-main);
+            -webkit-text-stroke: 0;
+        }
+
+        .page-indicator {
+            position: absolute;
+            bottom: 40px;
+            right: 180px;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1rem;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+            z-index: 100;
+        }
+        .page-indicator span.current {
+            color: var(--neon);
+            font-weight: 700;
+        }
+
+        h1 {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 900;
+            margin-bottom: 5px;
+            color: transparent;
+            -webkit-text-stroke: 1.5px var(--text-main);
+            text-transform: uppercase;
+            line-height: 1.1;
+        }
+
+        h1.neon-stroke {
+            -webkit-text-stroke: 1.5px var(--neon);
+        }
+
+        .subtitle {
+            font-family: 'Caveat', cursive;
+            font-size: 2rem;
+            color: var(--text-main);
+            margin-bottom: 15px;
+            opacity: 0.9;
+        }
+
+        .huge-number {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 5rem;
+            font-weight: 900;
+            color: var(--neon);
+            text-shadow: 0 0 20px rgba(0, 255, 65, 0.4);
+            margin: 0;
+            line-height: 1;
+        }
+
+        .huge-number span {
+            font-size: 2.5rem;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .text-block p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            color: #d1d1d1;
+            margin-bottom: 15px;
+        }
+
+        .text-block strong {
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        .highlight-green {
+            color: var(--neon);
+            font-weight: 600;
+        }
+
+        .cycle-block {
+            background: var(--panel-bg);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-left: 4px solid var(--neon);
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.2s ease;
+        }
+
+        .cycle-block:hover {
+            transform: translateX(5px);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .cycle-date {
+            font-family: 'Inter', sans-serif;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .cycle-val {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            font-size: 1.4rem;
+            color: var(--text-main);
+            white-space: nowrap;
+        }
+
+        .cycle-val span {
+            color: var(--neon);
+            font-family: 'Caveat', cursive;
+            font-size: 1.1rem;
+        }
+
+        /* Аккордеон для слайдов 2 и 3 */
+        .accordion {
+            background: var(--panel-bg);
+            border: 1px solid rgba(0, 255, 65, 0.2);
+            border-radius: 8px;
+            margin-top: 15px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .accordion:hover { border-color: rgba(0, 255, 65, 0.5); }
+        .accordion-header {
+            padding: 12px 20px; cursor: pointer; font-family: 'Montserrat', sans-serif; font-weight: 700; color: var(--neon);
+            display: flex; justify-content: space-between; align-items: center; user-select: none; background: rgba(0, 0, 0, 0.3);
+        }
+        .accordion-content {
+            max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1); padding: 0 20px; background: rgba(0, 0, 0, 0.5);
+        }
+        .accordion-content p, .accordion-content li { margin-top: 15px; margin-bottom: 15px; font-size: 1rem; color: #ccc; line-height: 1.6; padding-left: 5px; }
+        .accordion.open .accordion-content { max-height: 800px; padding-bottom: 15px; }
+        .accordion.open .accordion-header { background: rgba(0, 255, 65, 0.1); }
+
+        /* Базовые кнопки (навигация, управление) */
+        .nav-controls { position: fixed; bottom: 30px; right: 40px; display: flex; gap: 15px; z-index: 100; }
+        button { 
+            background: transparent; border: 1px solid rgba(255,255,255,0.2); color: var(--text-main); 
+            padding: 10px 20px; border-radius: 5px; font-family: 'Montserrat', sans-serif; font-weight: 700; 
+            cursor: pointer; transition: all 0.3s ease; 
+        }
+        button:hover { border-color: var(--neon); color: var(--neon); }
+
+        .progress-bar { position: fixed; top: 0; left: 0; height: 3px; background: var(--neon); transition: width 0.3s ease; z-index: 100; box-shadow: 0 0 10px var(--neon); }
+
+        .img-container {
+            width: 100%; height: 100%; display: flex; justify-content: center; align-items: center;
+            background: var(--panel-bg); border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 10px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .img-container img { width: 100%; height: 100%; object-fit: contain; border-radius: 8px; }
+
+        .math-doodle { position: absolute; font-family: 'Caveat', cursive; color: rgba(255,255,255,0.08); font-size: 2rem; pointer-events: none; user-select: none; }
+        .doodle-1 { top: 15%; right: 10%; transform: rotate(15deg); font-size: 4rem; }
+        .doodle-2 { bottom: 20%; left: 5%; transform: rotate(-20deg); font-size: 3rem; }
+        .doodle-3 { top: 40%; left: 45%; transform: rotate(5deg); font-size: 5rem; opacity: 0.05; }
+
+        /* Специфичная кнопка "Полный комментарий" */
+        .comment-btn {
+            background: var(--panel-bg);
+            border: 2px solid var(--neon);
+            border-radius: 8px;
+            padding: 15px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            z-index: 100;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+            transition: all 0.3s ease;
+            color: var(--neon);
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 900;
+            font-size: 1.2rem;
+            margin-top: 15px;
+            width: 100%;
+        }
+        .comment-btn:hover {
+            background: rgba(0, 255, 65, 0.15);
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.5);
+        }
+
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 200; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; backdrop-filter: blur(5px);
+        }
+        .modal.show { display: flex; }
+        .modal-content {
+            background: #111; border: 1px solid var(--neon); border-radius: 12px; padding: 30px;
+            max-width: 800px; width: 100%; max-height: 80vh; overflow-y: auto; position: relative; box-shadow: 0 0 50px rgba(0, 255, 65, 0.2);
+        }
+        .modal-content h3 { color: var(--neon); margin-top: 0; font-family: 'Montserrat', sans-serif; border-bottom: 1px solid rgba(0, 255, 65, 0.3); padding-bottom: 10px; }
+        .modal-content li { margin-bottom: 15px; line-height: 1.6; color: #ccc; font-size: 1.05rem; }
+        .modal-close { position: absolute; top: 15px; right: 20px; cursor: pointer; color: var(--text-muted); font-size: 1.5rem; font-weight: bold; }
+        .modal-close:hover { color: var(--target-red); }
+
+        /* Режим редактирования */
+        .edit-mode .editable { outline: 1px dashed var(--neon); outline-offset: 4px; background: rgba(0, 255, 65, 0.05); cursor: text; min-width: 20px; min-height: 1em; display: inline-block; }
+        .edit-mode .editable:hover { background: rgba(0, 255, 65, 0.1); }
+        .edit-mode .editable:focus { outline: 2px solid var(--neon); background: rgba(0, 255, 65, 0.1); box-shadow: 0 0 10px rgba(0, 255, 65, 0.2); }
+        .edit-controls { position: fixed; bottom: 30px; left: 40px; display: flex; gap: 15px; z-index: 100; }
+        .btn-edit { color: var(--text-muted); border-color: rgba(255,255,255,0.1); }
+        .btn-edit.active { color: var(--target-red); border-color: var(--target-red); box-shadow: 0 0 10px rgba(255, 75, 75, 0.2); }
+        .btn-save { display: none; color: var(--neon); border-color: var(--neon); }
+        .btn-save.show { display: block; }
+    </style>
+</head>
+<body>
+
+    <div class="progress-bar" id="progress"></div>
+    <div class="logo-top">PIFAGOR TRADE <span>math trade</span></div>
+    <div class="math-doodle doodle-1">∫ f(x)dx</div>
+    <div class="math-doodle doodle-2">Δy / Δx</div>
+    <div class="math-doodle doodle-3">%</div>
+
+    <!-- СЛАЙД 1 -->
+    <div class="slide active" id="slide-1" style="justify-content: center; text-align: center;">
+        <h1 class="neon-stroke editable">On-Chain Аналитика</h1>
+        <div class="subtitle editable">Percent Supply In Profit</div>
+        <div style="font-size: 1.2rem; color: var(--text-muted); margin-top: 40px; max-width: 600px; margin-left: auto; margin-right: auto; line-height: 1.8;" class="editable">
+            Интерактивный разбор метрики, цикличности и текущего положения рынка на основе данных <strong>Glassnode</strong>.
+        </div>
+        <div style="font-size: 1rem; color: #555; margin-top: 60px; letter-spacing: 2px;" class="editable">СРЕЗ ДАННЫХ: ОКТЯБРЬ 2026</div>
+    </div>
+
+    <!-- СЛАЙД 2 -->
+    <div class="slide" id="slide-2">
+        <h1 class="editable">Цикличность ATH → ATH</h1>
+        <div class="subtitle editable">Гармония долгосрочных трендов</div>
+        <div class="content-grid" style="grid-template-columns: 45% 55%;">
+            <div>
+                <div class="text-block editable">
+                    <p>Каждый цикл на метрике <strong>Percent Supply in Profit</strong> имеет единый характер завершения долгосрочного восходящего тренда: <span class="highlight-green">завершение цикла роста через образование дивергенции</span>.</p>
+                    <p>Это даёт возможность провести сравнительный анализ циклов и объективно оценить время, которое в среднем занимает 1 полноценный цикл.</p>
+                </div>
+                <div class="accordion">
+                    <div class="accordion-header" onclick="toggleAccordion(this)"><span class="editable">Разбор циклов ATH</span><span>▼</span></div>
+                    <div class="accordion-content">
+                        <div class="editable">
+                            <p>ATH 2025 поставили <strong>14 августа 2025</strong>, заняло времени: <strong>1580 дней</strong>. По временным рамкам формирование нового ATH 2025 заняло немного больше времени, чем обычно, однако я полагаю, что столь незначительные отклонения являются допустимыми, так как общая картина выглядит гармонично.</p>
+                            <p>⇒ Циклы от ATH до ATH выглядят гармонично (цикличность сохраняется), следовательно, на основании этого мы можем предположить что с высокой долей вероятности и цикличность от Low до Low также будет сохранена без серьёзных отклонений от нормы.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="img-container" style="height: 55vh;"><img src="graph_ath.png" alt="График ATH-ATH"></div>
+        </div>
+    </div>
+
+    <!-- СЛАЙД 3 -->
+    <div class="slide" id="slide-3">
+        <h1 class="editable">Цикличность Low → Low</h1>
+        <div class="subtitle editable">Поиск истинного дна</div>
+        <div class="content-grid" style="grid-template-columns: 40% 60%;">
+            <div>
+                <div class="cycle-block"><div class="cycle-date editable">22.11.2011 — 12.06.2015</div><div class="cycle-val editable">1298 <span>дн.</span></div></div>
+                <div class="cycle-block"><div class="cycle-date editable">12.06.2015 — 16.02.2019</div><div class="cycle-val editable">1345 <span>дн.</span></div></div>
+                <div class="cycle-block"><div class="cycle-date editable">16.02.2019 — 29.11.2022</div><div class="cycle-val editable">1382 <span>дн.</span></div></div>
+                <div class="cycle-block" style="border-left-color: var(--target-red); background: rgba(255, 75, 75, 0.08);">
+                    <div class="cycle-date editable" style="color: #fff;">29.11.2022 — 16.08.2026</div>
+                    <div class="cycle-val editable" style="color: var(--target-red);">1356 <span style="color: var(--target-red);">дн.</span></div>
+                </div>
+                <div class="accordion">
+                    <div class="accordion-header" onclick="toggleAccordion(this)"><span class="editable">Аргументация по Low</span><span>▼</span></div>
+                    <div class="accordion-content">
+                        <div class="editable">
+                            <p>С момента образования Low 2022 года до момента формирования нового Low 2026 (16 августа 2026) прошло <strong>1356 дней</strong>. Временные рамки (норма): [ 1298 - 1382 ] дней.</p>
+                            <p>Прямо сейчас мы находимся за пределами того временного диапазона, в рамках которого ожидалось формирование нового Low. Преобразовав ранее полученный временной диапазон в календарные даты, выходит: <strong>[ 19 июня - 11 сентября 2026 ]</strong>. Как раз в рамках указанного выше временного диапазона и был сформирован Low на метрике — 16 августа 2026 года.</p>
+                            <p><strong>Заключение:</strong> Ранее полученные данные указывали на то, что следующий Low на метрике с большой долей вероятности будет сформирован в рамках [19 июня - 11 сентября 2026] → в ожидаемом временном диапазоне был сформирован Low на метрике (16 августа 2026) → на протяжении более чем 1.5 месяцев показатель демонстрирует устойчивый, сильный рост → от Low 2022 к сегодняшнему дню (20 октября 2026) прошёл 1421 день (а значит мы уже вышли за пределы допустимого диапазона, где формирование нового Low являлось наиболее вероятным). Отмечу, что цена BTC сформировала Low в конце июня 2026, а новый Low на метрике был установлен в августе 2026, что выглядит вполне гармонично.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="img-container" style="height: 55vh;"><img src="graph_low.png" alt="График Low-Low"></div>
+        </div>
+    </div>
+
+    <!-- СЛАЙД 4 -->
+    <div class="slide" id="slide-4">
+        <h1 class="editable">Моделирование движения</h1>
+        <div class="subtitle editable">Текущая динамика и цели</div>
+        <div class="content-grid" style="grid-template-columns: 45% 55%;">
+            <div>
+                <div class="text-block editable">
+                    <p>После разворота на метрике от 16 августа 2026 года прошло 2 месяца. За это время показатель продемонстрировал рост на <strong class="highlight-green">+11.48%</strong>, не обновив ранее сформированный локальный Low.</p>
+                    <p>Следовательно, основные условия по данной метрике были выполнены. Данные указывают на факт сформированного дна как на метрике, так и на цене.</p>
+                    <p>Теперь цена и показатель находятся на начальном этапе роста в рамках долгосрочной тенденции.</p>
+                    <p>Ключевой ориентир для показателя — уровень <strong>95% (Target)</strong>. Статистически High на метрике формируется вблизи данного уровня.</p>
+                </div>
+            </div>
+            <div class="img-container" style="height: 55vh;"><img src="graph_model.png" alt="График Моделирования"></div>
+        </div>
+    </div>
+
+    <!-- СЛАЙД 5 -->
+    <div class="slide" id="slide-5">
+        <h1 class="editable">Статистика High</h1>
+        <div class="subtitle editable">Формирование дивергенции</div>
+        <div class="content-grid" style="grid-template-columns: 50% 50%; height: 60vh;">
+            <div style="text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center; background: var(--panel-bg); border-radius: 12px; border: 1px solid rgba(255, 75, 75, 0.2); padding: 30px;">
+                <div class="editable" style="font-size: 1.2rem; color: var(--text-muted); margin-bottom: 15px; text-transform: uppercase; letter-spacing: 2px;">Зона перегрева</div>
+                <div class="huge-number editable" style="color: var(--text-main); text-shadow: none; font-size: 5rem;">94<span style="font-size: 2.5rem;"> - </span>97<span>%</span></div>
+                <div class="editable" style="font-family: 'Caveat', cursive; font-size: 2rem; color: var(--target-red); margin-top: 20px;">Здесь формируется High цикла</div>
+            </div>
+            <div class="text-block editable" style="display: flex; flex-direction: column; justify-content: center; height: 100%; padding-left: 20px;">
+                <p>Статистически в диапазоне от <strong>94 до 97%</strong> показатель формирует High в рамках цикла.</p>
+                <p>После этого образуется <strong class="highlight-green">дивергенция</strong> между ценой и показателем.</p>
+                <p>Следом формируется глобальный разворот тренда на цене Bitcoin и метрике Percent Supply In Profit в пользу развития нисходящей тенденции.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- СЛАЙД 6 -->
+    <div class="slide" id="slide-6">
+        <h1 class="editable">Текущая ситуация</h1>
+        <div class="subtitle editable" style="margin-bottom: 10px;">Мы находимся здесь (WE HERE)</div>
+        
+        <!-- Верхний блок: Цифра слева, Текст справа -->
+        <div style="display: grid; grid-template-columns: 25% 75%; gap: 30px; align-items: center; margin-top: 10px;">
+            <div style="text-align: center; display: flex; flex-direction: column; justify-content: center;">
+                <div class="huge-number editable" style="font-size: 4rem;">+11.48<span>%</span></div>
+                <div class="editable" style="font-family: 'Caveat', cursive; font-size: 1.4rem; color: var(--text-muted); margin-top: 5px;">рост за 2 месяца</div>
+            </div>
+            <div class="text-block editable">
+                <p style="font-size: 1.05rem; line-height: 1.5; margin-bottom: 0;">Снижение на метрике приостановилось на уровне <strong>54.6%</strong> → после достижения данного уровня показатель продемонстрировал сильную реакцию в восходящем направлении → образовался ярко-выраженный Low → за 2 месяца показатель продемонстрировал рост на <strong>+11.48%</strong> от Low (16 августа 2026). Подобная динамика статистически указывает на то, что появился сигнал к тому, что разворот на метрике сформирован и произошла смена тренда в пользу развития восходящей тенденции. Иными словами, в Сентябре месяце было получено подтверждение в пользу того, что дно на метрике и цене Bitcoin сформировано, и в настоящий момент мы находимся на начальном этапе <strong>“Бычьего тренда”</strong> (на этапе его зарождения)</p>
+            </div>
+        </div>
+
+        <!-- График (в уменьшенном размере, чтобы кнопка поместилась) -->
+        <div class="img-container" style="height: 35vh; margin-top: 15px; width: 100%;">
+            <img src="graph_current.png" alt="График текущей ситуации">
+        </div>
+
+        <!-- Кнопка вызова модального окна (в потоке слайда, под графиком) -->
+        <div class="comment-btn" onclick="openModal()">
+            <span>Полный комментарий</span>
+            <span>▲</span>
+        </div>
+    </div>
+
+    <!-- Модальное окно -->
+    <div class="modal" id="commentModal" onclick="closeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-close" onclick="closeModal()">✕</div>
+            <h3>Полный комментарий</h3>
+            <ul>
+                <li>Low на метрике Percent Supply In Profit был сформирован <strong>16 августа 2026 года</strong>. Движение от Low 2022 до Low 2026 заняло 1356 дней, что выглядит крайне гармонично (дополнительный аргумент в пользу истинности Low на метрике).</li>
+                <li>На данный момент мы имеем следующие данные: снижение приостановилось на уровне 54.6%, после чего образовался ярко-выраженный Low. За 2 месяца рост составил + 11.48 % от Low к сегодняшнему дню (20 октября 2026). Более 11.48 % предложения перешло из состояния убытка в состояние прибыли.</li>
+                <li>Подобная динамика статистически указывает на то, что появился сигнал к тому, что разворот на метрике сформирован и произошла смена тренда в пользу развития восходящей тенденции. Иными словами, в Сентябре месяце было получено подтверждение в пользу того, что дно на метрике и цене Bitcoin сформировано, и в настоящий момент мы находимся на начальном этапе <strong>“Бычьего тренда”</strong> (на этапе его зарождения).</li>
+                <li>Ключевым ориентиром в рамках данного восходящего тренда выступает уровень 95%, вблизи которого статистически и формируется High на метрике в рамках всего цикла роста.</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Индикатор страниц -->
+    <div class="page-indicator">
+        <span class="current" id="current-page">01</span> / <span id="total-pages">06</span>
+    </div>
+
+    <div class="nav-controls">
+        <button onclick="prev()">←</button>
+        <button onclick="next()">→</button>
+    </div>
+
+    <div class="edit-controls">
+        <button class="btn-edit" id="btn-edit" onclick="toggleEditMode()">✏️ Режим правок</button>
+        <button class="btn-save" id="btn-save" onclick="saveHTML()">💾 Сохранить HTML</button>
+    </div>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        const progress = document.getElementById('progress');
+        const btnEdit = document.getElementById('btn-edit');
+        const btnSave = document.getElementById('btn-save');
+        const currentPageEl = document.getElementById('current-page');
+        const totalPagesEl = document.getElementById('total-pages');
+        
+        let currentSlide = 0;
+
+        totalPagesEl.innerText = String(slides.length).padStart(2, '0');
+
+        function updateSlide() {
+            slides.forEach((slide, index) => {
+                if (index === currentSlide) {
+                    slide.classList.add('active');
+                    slide.scrollTo({ top: 0, behavior: 'smooth' });
+                } else {
+                    slide.classList.remove('active');
+                }
+            });
+            progress.style.width = ((currentSlide + 1) / slides.length * 100) + '%';
+            currentPageEl.innerText = String(currentSlide + 1).padStart(2, '0');
+        }
+
+        function next() { if (currentSlide < slides.length - 1) { currentSlide++; updateSlide(); } }
+        function prev() { if (currentSlide > 0) { currentSlide--; updateSlide(); } }
+
+        function openModal() { document.getElementById('commentModal').classList.add('show'); }
+        function closeModal(e) {
+            if (e && e.target !== e.currentTarget && e.target.className !== 'modal-close') return;
+            document.getElementById('commentModal').classList.remove('show');
+        }
+
+        function toggleAccordion(header) {
+            if (document.body.classList.contains('edit-mode') && header.querySelector('.editable:focus')) return;
+            const accordion = header.parentElement;
+            accordion.classList.toggle('open');
+            const arrow = header.querySelector('span:last-child');
+            arrow.innerText = accordion.classList.contains('open') ? '▲' : '▼';
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (document.body.classList.contains('edit-mode')) return;
+            if (e.key === 'ArrowRight' || e.key === ' ') next();
+            if (e.key === 'ArrowLeft') prev();
+            if (e.key === 'Escape') closeModal();
+        });
+
+        function toggleEditMode() {
+            document.body.classList.toggle('edit-mode');
+            const isEditing = document.body.classList.contains('edit-mode');
+            
+            document.querySelectorAll('.editable').forEach(el => {
+                el.contentEditable = isEditing ? "true" : "false";
+            });
+
+            if (isEditing) {
+                btnEdit.classList.add('active');
+                btnEdit.innerText = "❌ Выйти из правок";
+                btnSave.classList.add('show');
+            } else {
+                btnEdit.classList.remove('active');
+                btnEdit.innerText = "✏️ Режим правок";
+                btnSave.classList.remove('show');
+            }
+        }
+
+        function saveHTML() {
+            if (document.body.classList.contains('edit-mode')) {
+                toggleEditMode();
+            }
+
+            const cloneDoc = document.documentElement.cloneNode(true);
+            
+            cloneDoc.querySelector('body').classList.remove('edit-mode');
+            cloneDoc.querySelectorAll('.editable').forEach(el => {
+                el.removeAttribute('contenteditable');
+                el.classList.remove('editable');
+            });
+
+            cloneDoc.querySelectorAll('.accordion').forEach(acc => {
+                acc.classList.remove('open');
+                const arrow = acc.querySelector('.accordion-header span:last-child');
+                if (arrow) arrow.innerText = '▼';
+            });
+
+            cloneDoc.querySelector('#btn-edit').className = 'btn-edit';
+            cloneDoc.querySelector('#btn-edit').innerText = '✏️ Режим правок';
+            cloneDoc.querySelector('#btn-save').className = 'btn-save';
+            
+            cloneDoc.querySelectorAll('.slide').forEach((s, i) => {
+                if (i === 0) s.classList.add('active');
+                else s.classList.remove('active');
+            });
+
+            const cPage = cloneDoc.querySelector('#current-page');
+            if (cPage) cPage.innerText = '01';
+
+            const htmlContent = '<!DOCTYPE html>\n' + cloneDoc.outerHTML;
+
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'presentation_v2.4.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        updateSlide();
+    </script>
+</body>
+</html>
